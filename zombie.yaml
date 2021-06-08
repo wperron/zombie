@@ -1,0 +1,12 @@
+api:
+  enabled: true
+  addr: ":8082"
+
+targets:
+  - name: localhost
+    url: "http://localhost:8080"
+    duration: 10000 # 10,000ms, or 10s
+    jitter: 0.2
+    headers:
+      "Accept":
+        - "*/*"
