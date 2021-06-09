@@ -35,7 +35,7 @@ func main() {
 	// We must use a buffered channel or risk missing the signal
 	// if we're not ready to receive when the signal is sent.
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGKILL, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	// Parse command line args
 	flag.Parse()
@@ -50,7 +50,9 @@ func main() {
 
 	// Start the API if enabled
 	if conf.Api != nil && conf.Api.Enabled {
-		go api.Serve(conf.Api.Addr)
+		go func() {
+			log.Fatal(api.Serve(conf.Api.Addr))
+		}()
 	}
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
