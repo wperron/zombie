@@ -6,5 +6,8 @@ dev-server:
 
 all: zombie dev-server
 
+run:
+	go run main.go --config zombie.yaml
+
 test:
 	go test ./... -v -count=1

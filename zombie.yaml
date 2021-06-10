@@ -5,7 +5,7 @@ api:
 targets:
   - name: localhost
     url: "https://google.com"
-    delay: "10000" # 10,000ms, or 10s
+    duration: "10000" # 10,000ms, or 10s
     jitter: 0.2
     headers:
       "Accept":

@@ -62,7 +62,8 @@ func main() {
 	out := make(chan string)
 
 	for _, t := range conf.Targets {
-		go client.DefaultPinger.Ping(t, out)
+		pinger := client.NewInstrumentedPinger()
+		go pinger.Ping(t, out)
 	}
 
 	go func() {
