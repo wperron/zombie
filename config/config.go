@@ -37,14 +37,22 @@ type Target struct {
 	Headers *http.Header `yaml:"headers,omitempty"`
 
 	// Delay to wait between each request. This parameter is affected byt the
-	// Jitter parameter
-	Delay time.Duration
-
-	duration int64 `yaml:"duration"`
+	// Jitter parameter. Expressed in milliseconds
+	Delay int64 `yaml:"delay"`
 
 	// Jitter applied to the Delay between each request. Jitter is a modifier
 	// applied in each direction so that a value of `0.2` means ±20%
 	Jitter float64 `yaml:"jitter"`
+}
+
+const defaultDuration = 1000 * time.Millisecond
+
+func (t *Target) Duration() time.Duration {
+	if t == nil || t.Delay == 0 {
+		return defaultDuration
+	}
+
+	return time.Duration(t.Delay) * time.Millisecond
 }
 
 func Load(s string) (*Config, error) {
@@ -52,10 +60,6 @@ func Load(s string) (*Config, error) {
 
 	if err := yaml.Unmarshal([]byte(s), cfg); err != nil {
 		return nil, err
-	}
-
-	for _, t := range cfg.Targets {
-		t.Delay = time.Duration(t.duration)
 	}
 
 	return cfg, nil

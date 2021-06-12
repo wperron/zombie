@@ -22,8 +22,8 @@ func TestConfig(t *testing.T) {
 			t.Errorf("expected target to be unnamed, got name %s", target.Name)
 		}
 
-		if target.Delay != 0 {
-			t.Errorf("expected target to have default delay, got %d", target.Delay)
+		if target.Duration() != defaultDuration {
+			t.Errorf("expected target to have default delay, got %d", target.Duration())
 		}
 
 		if target.Jitter != 0 {
@@ -49,6 +49,7 @@ func TestConfig(t *testing.T) {
 
 		if target.Headers == nil || len(*target.Headers) == 0 {
 			t.Errorf("no headers set on target")
+			t.FailNow()
 		}
 
 		if contentType := target.Headers.Values("Content-Type"); !reflect.DeepEqual(contentType, []string{"application/json"}) {
@@ -81,23 +82,24 @@ func TestConfig(t *testing.T) {
 				t.Errorf("expected target to have a name at index %d", i)
 			}
 
+			if i == 0 {
+				if target.Duration().Milliseconds() != 10000 {
+					t.Errorf("expected delay of 10000, got %d", target.Duration().Milliseconds())
+				}
+			}
+
 			if i == 1 {
+				if target.Duration().Milliseconds() != 20000 {
+					t.Errorf("expected delay of 20000, got %d", target.Duration().Milliseconds())
+				}
+
 				if target.Headers == nil || len(*target.Headers) == 0 {
 					t.Errorf("no headers set on target")
+					t.FailNow()
 				}
 
 				if contentType := target.Headers.Values("Content-Type"); !reflect.DeepEqual(contentType, []string{"application/json"}) {
 					t.Errorf("expected content type header `application/json`, got %s", contentType)
-				}
-
-				if target.Delay != 10000 {
-					t.Errorf("expected delay of 10000, got %d", target.Delay)
-				}
-			}
-
-			if i == 2 {
-				if target.Delay != 20000 {
-					t.Errorf("expected delay of 20000, got %d", target.Delay)
 				}
 			}
 		}
@@ -125,11 +127,11 @@ var complete = `
 targets:
   - name: foo
     url: http://foo.org
-    duration: 10000
+    delay: 10000
     jitter: 0.1
   - name: var
     url: http://bar.org
-    duration: 20000
+    delay: 20000
     jitter: 0.2
     headers:
       "Content-Type":

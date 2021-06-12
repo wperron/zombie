@@ -147,7 +147,7 @@ func (p *pinger) Ping(t config.Target, out chan<- string) {
 	}
 
 	for {
-		delay := float64(t.Delay)
+		delay := float64(t.Duration())
 		if delay == 0.0 {
 			delay = float64(defaultDelay)
 		}

@@ -84,9 +84,9 @@ func printSummary(c config.Config) {
 	}
 	for _, t := range c.Targets {
 		if t.Name != "" {
-			fmt.Printf("target name: %s at %s, base delay: %d ms, jitter: %f\n", t.Name, t.Url, t.Delay.Milliseconds(), t.Jitter)
+			fmt.Printf("target name: %s at %s, base delay: %d ms, jitter: %f\n", t.Name, t.Url, t.Duration().Milliseconds(), t.Jitter)
 		} else {
-			fmt.Printf("target name: %s, base delay: %dms, jitter: %f\n", t.Url, t.Delay, t.Jitter)
+			fmt.Printf("target name: %s, base delay: %d ms, jitter: %f\n", t.Url, t.Duration().Milliseconds(), t.Jitter)
 		}
 	}
 	fmt.Println("")
