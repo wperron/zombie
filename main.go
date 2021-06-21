@@ -19,6 +19,13 @@ import (
 	"github.com/wperron/zombie/config"
 )
 
+// Version is set via build flag -ldflags -X main.Version
+var (
+	Version  string
+	Branch   string
+	Revision string
+)
+
 var (
 	configPath = flag.String("config", "", "The location of the config file.")
 	// TODO(wperron) add verbose and quiet options
@@ -79,6 +86,7 @@ func main() {
 
 func printSummary(c config.Config) {
 	fmt.Println("Zombie started")
+	fmt.Printf("version=%s branch=%s revision=%s\n", Version, Branch, Revision)
 	if c.Api != nil && c.Api.Enabled {
 		fmt.Printf("API enabled on %s\n", c.Api.Addr)
 	}
