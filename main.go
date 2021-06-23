@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/fatih/color"
 	"github.com/wperron/zombie/api"
 	"github.com/wperron/zombie/client"
 	"github.com/wperron/zombie/config"
@@ -28,6 +29,7 @@ var (
 
 var (
 	configPath = flag.String("config", "", "The location of the config file.")
+	noColor    = flag.Bool("no-color", false, "Suppress colors from the output")
 	// TODO(wperron) add verbose and quiet options
 )
 
@@ -86,7 +88,12 @@ func main() {
 
 func printSummary(c config.Config) {
 	fmt.Println("Zombie started")
-	fmt.Printf("version=%s branch=%s revision=%s\n", Version, Branch, Revision)
+	if noColor != nil && *noColor {
+		fmt.Printf("version=%s branch=%s revision=%s\n", Version, Branch, Revision)
+	} else {
+		fmt.Printf("version=%s branch=%s revision=%s\n", color.GreenString(Version), color.GreenString(Branch), color.GreenString(Revision))
+	}
+
 	if c.Api != nil && c.Api.Enabled {
 		fmt.Printf("API enabled on %s\n", c.Api.Addr)
 	}
