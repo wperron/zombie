@@ -1,4 +1,4 @@
-# Zombie
+# 🧟 Zombie
 
 A _simple_ natural load balancer meant to simulate organic traffic on a system.
 It's a rudimentary tool meant to use locally to test and application or simply
