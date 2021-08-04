@@ -6,15 +6,17 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
-	"log"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/fatih/color"
+	"github.com/go-kit/kit/log"
 	"github.com/wperron/zombie/api"
 	"github.com/wperron/zombie/client"
 	"github.com/wperron/zombie/config"
@@ -25,17 +27,20 @@ var (
 	Version  string
 	Branch   string
 	Revision string
+	logger   log.Logger
 )
 
 var (
 	configPath = flag.String("config", "", "The location of the config file.")
 	noColor    = flag.Bool("no-color", false, "Suppress colors from the output")
+	format     = flag.String("format", "logfmt", "Log output format. Defaults to 'logfmt'")
 	// TODO(wperron) add verbose and quiet options
 )
 
 func init() {
 	if client.DefaultPinger == nil {
-		log.Fatal("default pinger is nil")
+		fmt.Println("default pinger is nil")
+		os.Exit(1)
 	}
 }
 
@@ -52,15 +57,22 @@ func main() {
 	// Load the configuration file
 	conf, err := config.LoadFile(*configPath)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	printSummary(*conf)
 
+	logger, err = makeLogger(*format, os.Stdout)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	// Start the API if enabled
 	if conf.Api != nil && conf.Api.Enabled {
 		go func() {
-			log.Fatal(api.Serve(conf.Api.Addr))
+			logger.Log(api.Serve(conf.Api.Addr))
 		}()
 	}
 
@@ -68,22 +80,34 @@ func main() {
 		InsecureSkipVerify: true,
 	}
 
-	out := make(chan string)
+	out := make(chan client.Result)
+	errors := make(chan error)
 
 	for _, t := range conf.Targets {
 		pinger := client.NewInstrumentedPinger()
-		go pinger.Ping(t, out)
+		go pinger.Ping(t, out, errors)
 	}
 
 	go func() {
-		for message := range out {
-			log.Println(message)
+		for m := range out {
+			logger.Log("target", m.Name, "method", m.Method, "status", m.Status, "url", m.URL, "latency", m.Latency)
 		}
 	}()
 
 	// Block until a signal is received.
 	s := <-sigs
-	log.Println("Got signal:", s)
+	logger.Log(fmt.Sprintf("Got signal: %s", s))
+}
+
+func makeLogger(f string, out io.Writer) (log.Logger, error) {
+	switch f {
+	case "logfmt":
+		return log.NewLogfmtLogger(log.NewSyncWriter(out)), nil
+	case "json":
+		return log.NewJSONLogger(log.NewSyncWriter(out)), nil
+	default:
+		return nil, errors.New("unknown log format")
+	}
 }
 
 func printSummary(c config.Config) {

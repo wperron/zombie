@@ -30,6 +30,15 @@ type pinger struct {
 	client *http.Client
 }
 
+type Result struct {
+	Name       string
+	Method     string
+	Status     int
+	StatusText string
+	URL        string
+	Latency    int
+}
+
 func NewPinger(c http.Client) *pinger {
 	return &pinger{
 		client: &c,
@@ -131,7 +140,7 @@ func NewInstrumentedPinger() *pinger {
 	}
 }
 
-func (p *pinger) Ping(t config.Target, out chan<- string) {
+func (p *pinger) Ping(t config.Target, out chan<- Result, e chan<- error) {
 	u, err := url.Parse(t.Url)
 	if err != nil {
 		log.Fatalf("unable to parse URL %s", t.Url)
@@ -159,15 +168,20 @@ func (p *pinger) Ping(t config.Target, out chan<- string) {
 
 		time.Sleep(time.Duration(delay * (1 + (jitter * (rand.Float64()*2 - 1)))))
 
+		start := time.Now()
 		res, err := p.client.Do(&req)
+		lat := time.Since(start)
 		if err != nil {
-			out <- fmt.Sprintf("error: %s", err)
+			e <- fmt.Errorf("error: %s", err)
 		} else {
-			prefix := t.Name
-			if prefix == "" {
-				prefix = t.Url
+			out <- Result{
+				Name:       t.Name,
+				Method:     "GET",
+				Status:     res.StatusCode,
+				StatusText: res.Status,
+				URL:        t.Url,
+				Latency:    int(lat.Milliseconds()),
 			}
-			out <- fmt.Sprintf("[%s] GET %s %s", prefix, res.Status, u.String())
 		}
 	}
 }
