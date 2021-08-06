@@ -27,6 +27,7 @@ jobs:
       - name: Image IDs
         id: image_id
         run: |
+          git fetch --tags
           echo "::set-output name=full_id::$(git describe --tags --abbrev=0)-$(git rev-parse --abbrev-ref HEAD)"
           echo "::set-output name=short_id::$(git describe --tags --abbrev=0)"
       - name: Build and push
