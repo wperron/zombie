@@ -32,5 +32,5 @@ jobs:
           push: true
           tags: |
             ghcr.io/user/app:latest
-            ghcr.io/user/app:$(shell git describe --tags --abbrev=0)-$(shell git rev-parse --abbrev-ref HEAD)
-            ghcr.io/user/app:$(shell git describe --tags --abbrev=0)
+            ghcr.io/user/app:"$(shell git describe --tags --abbrev=0)-$(shell git rev-parse --abbrev-ref HEAD)"
+            ghcr.io/user/app:"$(shell git describe --tags --abbrev=0)"
