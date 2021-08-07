@@ -39,6 +39,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/user/app:latest
-            ghcr.io/user/app:${{ steps.image_id.outputs.full_id }}
-            ghcr.io/user/app:${{ steps.image_id.outputs.short_id }}
+            ghcr.io/wperron/zombie:latest
+            ghcr.io/wperron/zombie:${{ steps.image_id.outputs.full_id }}
+            ghcr.io/wperron/zombie:${{ steps.image_id.outputs.short_id }}
