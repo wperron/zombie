@@ -37,6 +37,7 @@ type Result struct {
 	StatusText string
 	URL        string
 	Latency    int
+	TraceID    string
 }
 
 func NewPinger(c http.Client) *pinger {
@@ -181,6 +182,7 @@ func (p *pinger) Ping(t config.Target, out chan<- Result, e chan<- error) {
 				StatusText: res.Status,
 				URL:        t.Url,
 				Latency:    int(lat.Milliseconds()),
+				TraceID:    res.Header.Get(t.TraceHeader),
 			}
 		}
 	}

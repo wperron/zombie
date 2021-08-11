@@ -43,6 +43,10 @@ type Target struct {
 	// Jitter applied to the Delay between each request. Jitter is a modifier
 	// applied in each direction so that a value of `0.2` means ±20%
 	Jitter float64 `yaml:"jitter"`
+
+	// TraceHeader contains the name of the trace ID header. If set, each
+	// response will be anotated with it.
+	TraceHeader string `yaml:"trace_header,omitempty"`
 }
 
 const defaultDuration = 1000 * time.Millisecond

@@ -90,7 +90,11 @@ func main() {
 
 	go func() {
 		for m := range out {
-			logger.Log("target", m.Name, "method", m.Method, "status", m.Status, "url", m.URL, "latency", m.Latency)
+			vals := []interface{}{"target", m.Name, "method", m.Method, "status", m.Status, "url", m.URL, "latency", m.Latency}
+			if m.TraceID != "" {
+				vals = append(vals, "trace_id", m.TraceID)
+			}
+			logger.Log(vals...)
 		}
 	}()
 
