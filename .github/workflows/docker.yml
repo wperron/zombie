@@ -30,8 +30,8 @@ jobs:
         id: image_id
         run: |
           git fetch --tags
-          echo "::set-output name=full_id::$([[ ${{ github.ref }} == refs/tags/* ]] && git describe --tags --abbrev=0 || git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)"
-          echo "::set-output name=short_id::$([[ ${{ github.ref }} == refs/tags/* ]] && git describe --tags --abbrev=0 || git describe --tags --abbrev=0)"
+          echo "::set-output name=full_id::$([[ ${{ github.ref }} == refs/tags/* ]] && git describe --tags --abbrev=0 || git rev-parse --abbrev-ref HEAD)-$(git rev-parse --short HEAD)"
+          echo "::set-output name=short_id::$([[ ${{ github.ref }} == refs/tags/* ]] && git describe --tags --abbrev=0 || git rev-parse --abbrev-ref HEAD)"
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
