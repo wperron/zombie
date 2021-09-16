@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/wperron/zombie/config"
 )
 
@@ -20,10 +19,16 @@ var (
 	DefaultPinger = &pinger{
 		client: http.DefaultClient,
 	}
+
+	inFlightGauge  *prometheus.GaugeVec
+	requestCounter *prometheus.CounterVec
+	dnsLatencyVec  *prometheus.HistogramVec
+	tlsLatencyVec  *prometheus.HistogramVec
+	reqLatencyVec  *prometheus.HistogramVec
 )
 
 type Pinger interface {
-	Ping(config.Target, chan<- string)
+	Ping(config.Target, chan<- Result, chan<- error)
 }
 
 type pinger struct {
@@ -40,102 +45,78 @@ type Result struct {
 	TraceID    string
 }
 
-func NewPinger(c http.Client) *pinger {
-	return &pinger{
-		client: &c,
-	}
-}
+func init() {
+	// do something
+	inFlightGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "client_in_flight_requests",
+			Help: "A gauge of in-flight requests for the wrapped client.",
+		},
+		[]string{"target"},
+	)
 
-func NewInstrumentedClient() *http.Client {
-	client := &http.Client{}
-	*client = *http.DefaultClient
-	client.Timeout = 1 * time.Second
-
-	inFlightGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "client_in_flight_requests",
-		Help: "A gauge of in-flight requests for the wrapped client.",
-	})
-
-	counter := prometheus.NewCounterVec(
+	requestCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "client_api_requests_total",
 			Help: "A counter for requests from the wrapped client.",
 		},
-		[]string{"code", "method"},
+		[]string{"target", "code", "method"},
 	)
 
 	// dnsLatencyVec uses custom buckets based on expected dns durations.
 	// It has an instance label "event", which is set in the
 	// DNSStart and DNSDonehook functions defined in the
 	// InstrumentTrace struct below.
-	dnsLatencyVec := prometheus.NewHistogramVec(
+	dnsLatencyVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "dns_duration_seconds",
 			Help:    "Trace dns latency histogram.",
 			Buckets: []float64{.005, .01, .025, .05},
 		},
-		[]string{"event"},
+		[]string{"target", "event"},
 	)
 
 	// tlsLatencyVec uses custom buckets based on expected tls durations.
 	// It has an instance label "event", which is set in the
 	// TLSHandshakeStart and TLSHandshakeDone hook functions defined in the
 	// InstrumentTrace struct below.
-	tlsLatencyVec := prometheus.NewHistogramVec(
+	tlsLatencyVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "tls_duration_seconds",
 			Help:    "Trace tls latency histogram.",
 			Buckets: []float64{.05, .1, .25, .5},
 		},
-		[]string{"event"},
+		[]string{"target", "event"},
 	)
 
-	// histVec has no labels, making it a zero-dimensional ObserverVec.
-	histVec := prometheus.NewHistogramVec(
+	// reqLatencyVec has no labels, making it a zero-dimensional ObserverVec.
+	reqLatencyVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "request_duration_seconds",
 			Help:    "A histogram of request latencies.",
 			Buckets: prometheus.DefBuckets,
 		},
-		[]string{},
+		[]string{"target"},
 	)
 
 	// Register all of the metrics in the standard registry.
-	prometheus.MustRegister(counter, tlsLatencyVec, dnsLatencyVec, histVec, inFlightGauge)
+	prometheus.MustRegister(requestCounter, tlsLatencyVec, dnsLatencyVec, reqLatencyVec, inFlightGauge)
+}
 
-	// Define functions for the available httptrace.ClientTrace hook
-	// functions that we want to instrument.
-	trace := &promhttp.InstrumentTrace{
-		DNSStart: func(t float64) {
-			dnsLatencyVec.WithLabelValues("dns_start").Observe(t)
-		},
-		DNSDone: func(t float64) {
-			dnsLatencyVec.WithLabelValues("dns_done").Observe(t)
-		},
-		TLSHandshakeStart: func(t float64) {
-			tlsLatencyVec.WithLabelValues("tls_handshake_start").Observe(t)
-		},
-		TLSHandshakeDone: func(t float64) {
-			tlsLatencyVec.WithLabelValues("tls_handshake_done").Observe(t)
-		},
-	}
+func NewInstrumentedPinger(target string) *pinger {
+	client := &http.Client{}
+	*client = *http.DefaultClient
+	client.Timeout = 1 * time.Second
 
 	// Wrap the default RoundTripper with middleware.
-	roundTripper := promhttp.InstrumentRoundTripperInFlight(inFlightGauge,
-		promhttp.InstrumentRoundTripperCounter(counter,
-			promhttp.InstrumentRoundTripperTrace(trace,
-				promhttp.InstrumentRoundTripperDuration(histVec, http.DefaultTransport),
-			),
+	roundTripper := InstrumentRoundTripperInFlight(inFlightGauge, &target,
+		InstrumentRoundTripperCounter(requestCounter, &target,
+			InstrumentRoundTripperDuration(reqLatencyVec, &target, http.DefaultTransport),
 		),
 	)
 
 	// Set the RoundTripper on our client.
 	client.Transport = roundTripper
-	return client
-}
-
-func NewInstrumentedPinger() *pinger {
-	client := NewInstrumentedClient()
 	return &pinger{
 		client: client,
 	}
@@ -186,4 +167,47 @@ func (p *pinger) Ping(t config.Target, out chan<- Result, e chan<- error) {
 			}
 		}
 	}
+}
+
+type RoundTripperFunc func(req *http.Request) (*http.Response, error)
+
+// RoundTrip implements the RoundTripper interface.
+func (rt RoundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return rt(r)
+}
+
+func InstrumentRoundTripperInFlight(gauge *prometheus.GaugeVec, target *string, next http.RoundTripper) RoundTripperFunc {
+	return RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		gauge.WithLabelValues(*target).Inc()
+		defer gauge.WithLabelValues(*target).Dec()
+		return next.RoundTrip(r)
+	})
+}
+
+func InstrumentRoundTripperCounter(counter *prometheus.CounterVec, target *string, next http.RoundTripper) RoundTripperFunc {
+	return RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		resp, err := next.RoundTrip(r)
+		if err == nil {
+
+			counter.With(prometheus.Labels{
+				"code":   fmt.Sprint(resp.StatusCode),
+				"method": r.Method,
+				"target": *target,
+			}).Inc()
+		}
+		return resp, err
+	})
+}
+
+func InstrumentRoundTripperDuration(obs prometheus.ObserverVec, target *string, next http.RoundTripper) RoundTripperFunc {
+	return RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		start := time.Now()
+		resp, err := next.RoundTrip(r)
+		if err == nil {
+			obs.With(prometheus.Labels{
+				"target": *target,
+			}).Observe(time.Since(start).Seconds())
+		}
+		return resp, err
+	})
 }

@@ -84,7 +84,11 @@ func main() {
 	errors := make(chan error)
 
 	for _, t := range conf.Targets {
-		pinger := client.NewInstrumentedPinger()
+		ns := t.Name
+		if ns == "" {
+			ns = t.Url
+		}
+		pinger := client.NewInstrumentedPinger(ns)
 		go pinger.Ping(t, out, errors)
 	}
 
@@ -95,6 +99,13 @@ func main() {
 				vals = append(vals, "trace_id", m.TraceID)
 			}
 			logger.Log(vals...)
+		}
+	}()
+
+	go func() {
+		for e := range errors {
+			logger.Log("error", e)
+			os.Exit(1)
 		}
 	}()
 
