@@ -148,7 +148,7 @@ func (p *pinger) Ping(t config.Target, out chan<- Result, e chan<- error) {
 			jitter = float64(defaultJitter)
 		}
 
-		time.Sleep(time.Duration(delay * (1 + (jitter * (rand.Float64()*2 - 1)))))
+		time.Sleep(Jitter(delay, jitter))
 
 		start := time.Now()
 		res, err := p.client.Do(&req)
@@ -210,4 +210,9 @@ func InstrumentRoundTripperDuration(obs prometheus.ObserverVec, target *string, 
 		}
 		return resp, err
 	})
+}
+
+func Jitter(val, jitter float64) (jittered time.Duration) {
+  jittered = time.Duration(val * (1 + (jitter * (rand.Float64()*2 - 1))))
+  return
 }

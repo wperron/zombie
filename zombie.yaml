@@ -7,6 +7,7 @@ targets:
     url: "https://google.com"
     delay: 10000 # 10,000ms, or 10s
     jitter: 0.2
+    workers: 10
     headers:
       "Accept":
         - "*/*"

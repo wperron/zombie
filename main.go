@@ -88,8 +88,16 @@ func main() {
 		if ns == "" {
 			ns = t.Url
 		}
-		pinger := client.NewInstrumentedPinger(ns)
-		go pinger.Ping(t, out, errors)
+
+		workers := t.Workers
+		if workers <= 0 {
+			workers = 1
+		}
+
+		for i := 0; i < workers; i++ {
+			pinger := client.NewInstrumentedPinger(ns)
+			go pinger.Ping(t, out, errors)
+		}
 	}
 
 	go func() {

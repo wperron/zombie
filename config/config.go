@@ -47,6 +47,10 @@ type Target struct {
 	// TraceHeader contains the name of the trace ID header. If set, each
 	// response will be anotated with it.
 	TraceHeader string `yaml:"trace_header,omitempty"`
+
+	// Workers defines how many concurrent goroutines to spawn to generate load
+	// concurrently. Defaults to 1.
+	Workers int `yaml:"workers,omitempty"`
 }
 
 const defaultDuration = 1000 * time.Millisecond
