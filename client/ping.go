@@ -3,6 +3,7 @@ package client
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -156,6 +157,10 @@ func (p *pinger) Ping(t config.Target, out chan<- Result, e chan<- error) {
 		if err != nil {
 			e <- fmt.Errorf("error: %s", err)
 		} else {
+			// Reading and closing the body is important to ensure that the file
+			// descriptor is not leaked.
+			_, _ = ioutil.ReadAll(res.Body)
+			_ = res.Body.Close()
 			out <- Result{
 				Name:       t.Name,
 				Method:     "GET",
@@ -213,6 +218,6 @@ func InstrumentRoundTripperDuration(obs prometheus.ObserverVec, target *string, 
 }
 
 func Jitter(val, jitter float64) (jittered time.Duration) {
-  jittered = time.Duration(val * (1 + (jitter * (rand.Float64()*2 - 1))))
-  return
+	jittered = time.Duration(val * (1 + (jitter * (rand.Float64()*2 - 1))))
+	return
 }
