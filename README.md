@@ -1,3 +1,5 @@
+> This project was archived and moved into [o11yutil](https://github.com/wperron/o11yutil).
+
 # 🧟 Zombie
 
 A _simple_ natural load generator meant to simulate organic traffic on a system.
